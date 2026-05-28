@@ -1,0 +1,17 @@
+{
+  "name": "crystal-devops-demo",
+  "version": "1.0.0",
+  "description": "Sistema DevOps de demonstracao em Crystal Lang — pipelines CI/CD, deployments blue-green, metricas Prometheus e dashboard em tempo real.",
+  "main": "server.js",
+  "scripts": {
+    "start":   "node server.js",
+    "test":    "node test.js",
+    "dev":     "node --watch server.js"
+  },
+  "keywords": ["crystal", "devops", "cicd", "pipeline", "deploy", "metrics", "prometheus"],
+  "author": "Crystal DevOps Demo",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

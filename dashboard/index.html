@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔮 Crystal DevOps Dashboard</title>
+  <meta name="description" content="Dashboard de monitoramento DevOps em tempo real para aplicação Crystal Lang" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens ───────────────────────────────── */
+    :root {
+      --bg-primary:     #080c14;
+      --bg-secondary:   #0d1520;
+      --bg-card:        #111827;
+      --bg-glass:       rgba(17, 24, 39, 0.7);
+      --border:         rgba(99, 102, 241, 0.15);
+      --border-bright:  rgba(99, 102, 241, 0.4);
+      --crystal:        #a78bfa;
+      --crystal-dark:   #7c3aed;
+      --crystal-glow:   rgba(167, 139, 250, 0.25);
+      --cyan:           #22d3ee;
+      --green:          #10b981;
+      --red:            #ef4444;
+      --amber:          #f59e0b;
+      --text-primary:   #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted:     #475569;
+      --radius:         12px;
+      --radius-lg:      18px;
+      --shadow-glow:    0 0 40px rgba(167, 139, 250, 0.1);
+      --font:           'Inter', sans-serif;
+      --font-mono:      'JetBrains Mono', monospace;
+    }
+
+    /* ── Reset & Base ────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated Background ─────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34, 211, 238, 0.05) 0%, transparent 50%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8, 12, 20, 0.85);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--crystal-dark), var(--crystal));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px var(--crystal-glow);
+    }
+
+    .logo-text h1 {
+      font-size: 18px; font-weight: 700;
+      background: linear-gradient(90deg, var(--crystal), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo-text span {
+      font-size: 12px; color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-status {
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--green);
+      padding: 6px 12px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+    }
+
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+      50%       { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
+    .api-url {
+      font-family: var(--font-mono);
+      font-size: 12px; color: var(--text-muted);
+      background: var(--bg-card);
+      padding: 6px 12px; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Main Layout ─────────────────────────────────── */
+    main { padding: 32px 0 60px; }
+
+    /* ── Stats Grid ──────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative; overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--crystal-dark), var(--crystal));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .stat-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+    .stat-sub   { font-size: 12px; color: var(--text-secondary); }
+
+    .stat-value.crystal  { background: linear-gradient(90deg, var(--crystal), #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-value.cyan     { background: linear-gradient(90deg, var(--cyan), #67e8f9);    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-value.green    { color: var(--green); }
+    .stat-value.red      { color: var(--red); }
+    .stat-value.amber    { color: var(--amber); }
+
+    /* ── Section Headers ─────────────────────────────── */
+    .section { margin-bottom: 28px; }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .icon { font-size: 18px; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      border: none; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--crystal-dark), var(--crystal));
+      color: white;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--red);
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+    .btn-ghost {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-ghost:hover { border-color: var(--border-bright); color: var(--text-primary); }
+
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Pipeline List ───────────────────────────────── */
+    .pipeline-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .pipeline-run {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center; gap: 16px;
+      transition: all 0.3s ease;
+    }
+    .pipeline-run:hover { border-color: var(--border-bright); }
+
+    .run-status-icon { font-size: 20px; width: 36px; text-align: center; }
+    .run-info .run-id { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+    .run-info .run-name { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .run-info .run-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+    .run-stages { display: flex; gap: 4px; }
+    .stage-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      transition: all 0.3s;
+    }
+    .stage-dot.pending  { background: var(--text-muted); }
+    .stage-dot.running  { background: var(--amber); animation: pulse-amber 1s infinite; }
+    .stage-dot.success  { background: var(--green); }
+    .stage-dot.failed   { background: var(--red); }
+    .stage-dot.skipped  { background: var(--text-muted); opacity: 0.4; }
+
+    @keyframes pulse-amber {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.6; transform: scale(0.8); }
+    }
+
+    .run-duration {
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--text-secondary); text-align: right;
+    }
+
+    /* ── Status Badge ─────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-queued    { background: rgba(100,116,139,0.2);  color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .badge-running   { background: rgba(245,158,11,0.15); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+    .badge-success   { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .badge-failed    { background: rgba(239,68,68,0.15);  color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+    .badge-cancelled { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+
+    /* ── Deploy Timeline ──────────────────────────────── */
+    .deploy-timeline { display: flex; flex-direction: column; gap: 10px; }
+
+    .deploy-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 16px;
+      transition: all 0.3s;
+    }
+    .deploy-item:hover { border-color: var(--border-bright); }
+
+    .deploy-progress {
+      flex: 1;
+      height: 4px; background: var(--bg-secondary);
+      border-radius: 2px; overflow: hidden;
+    }
+    .deploy-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--crystal-dark), var(--crystal));
+      border-radius: 2px;
+      transition: width 1s ease;
+    }
+
+    /* ── Metrics Panel ────────────────────────────────── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .metrics-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .metric-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid rgba(71,85,105,0.2);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-key   { font-size: 12px; color: var(--text-secondary); }
+    .metric-val   { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+    /* ── Terminal Block ───────────────────────────────── */
+    .terminal {
+      background: #0a0f1a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px; line-height: 1.7;
+      max-height: 200px; overflow-y: auto;
+      color: #7dd3fc;
+    }
+    .terminal::-webkit-scrollbar { width: 4px; }
+    .terminal::-webkit-scrollbar-track { background: transparent; }
+    .terminal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .terminal .log-success { color: var(--green); }
+    .terminal .log-error   { color: var(--red); }
+    .terminal .log-info    { color: var(--crystal); }
+    .terminal .log-muted   { color: var(--text-muted); }
+
+    /* ── Two Column Layout ───────────────────────────── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Empty State ─────────────────────────────────── */
+    .empty {
+      text-align: center; padding: 32px;
+      color: var(--text-muted);
+    }
+    .empty .icon { font-size: 32px; margin-bottom: 8px; }
+
+    /* ── Loading Spinner ─────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--crystal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast Notifications ─────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 9999;
+    }
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      animation: slide-in 0.3s ease;
+      min-width: 280px;
+    }
+    .toast.success { border-color: rgba(16,185,129,0.4); }
+    .toast.error   { border-color: rgba(239,68,68,0.4); }
+
+    @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Divider ─────────────────────────────────────── */
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+    /* ── Crystal Info ────────────────────────────────── */
+    .crystal-info {
+      background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(34,211,238,0.04));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 20px;
+    }
+    .crystal-gem { font-size: 48px; }
+    .crystal-info h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .crystal-info p  { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+
+    .crystal-stats { display: flex; gap: 20px; }
+    .cstat { text-align: center; }
+    .cstat-val { font-size: 22px; font-weight: 800; color: var(--crystal); }
+    .cstat-key { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 640px) {
+      .crystal-info { grid-template-columns: 1fr; text-align: center; }
+      .crystal-stats { justify-content: center; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipeline-run { grid-template-columns: auto 1fr; }
+      .run-stages, .run-duration { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Toast Container ──────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Header ───────────────────────────────────── -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🔮</div>
+        <div class="logo-text">
+          <h1>Crystal DevOps</h1>
+          <span>v1.0.0 • Real-time Dashboard</span>
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="api-url" id="api-url">http://localhost:3000</span>
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          LIVE
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── Main Content ──────────────────────────────── -->
+<main>
+  <div class="container">
+
+    <!-- Crystal Language Showcase -->
+    <div class="crystal-info" style="margin-bottom:28px">
+      <div class="crystal-gem">💎</div>
+      <div>
+        <h2>Crystal Lang — Performance meets Elegance</h2>
+        <p>Sintaxe Ruby-like com performance C. Compilado estaticamente, type-safe em compile-time, zero runtime errors de tipo. A escolha ideal para APIs de alta performance em ambientes DevOps.</p>
+      </div>
+      <div class="crystal-stats">
+        <div class="cstat">
+          <div class="cstat-val" id="crystal-version">1.14</div>
+          <div class="cstat-key">Crystal</div>
+        </div>
+        <div class="cstat">
+          <div class="cstat-val">~50MB</div>
+          <div class="cstat-key">Docker Image</div>
+        </div>
+        <div class="cstat">
+          <div class="cstat-val">&lt;5ms</div>
+          <div class="cstat-key">Avg Response</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">⏱ Uptime</div>
+        <div class="stat-value crystal" id="stat-uptime">—</div>
+        <div class="stat-sub" id="stat-uptime-human">loading...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📡 Total Requests</div>
+        <div class="stat-value cyan" id="stat-requests">—</div>
+        <div class="stat-sub" id="stat-rpm">— req/min</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">⚡ Avg Response</div>
+        <div class="stat-value green" id="stat-avg-rt">—</div>
+        <div class="stat-sub" id="stat-p99">P99: — ms</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">❌ Error Rate</div>
+        <div class="stat-value" id="stat-error-rate">—</div>
+        <div class="stat-sub" id="stat-errors">0 errors</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🚀 Pipelines</div>
+        <div class="stat-value crystal" id="stat-pipelines">—</div>
+        <div class="stat-sub" id="stat-success-rate">— success rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🧠 Memory</div>
+        <div class="stat-value amber" id="stat-memory">—</div>
+        <div class="stat-sub">RSS (estimated)</div>
+      </div>
+    </div>
+
+    <!-- Two Column: Pipeline + Deploy -->
+    <div class="two-col">
+
+      <!-- Pipeline Section -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <span class="icon">⚙️</span> CI/CD Pipelines
+            <span class="badge badge-running" id="running-badge" style="display:none">0 running</span>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btn-trigger">
+              ▶ Trigger Pipeline
+            </button>
+            <button class="btn btn-danger" id="btn-trigger-fail">
+              ✕ Inject Failure
+            </button>
+          </div>
+        </div>
+        <div class="pipeline-list" id="pipeline-list">
+          <div class="empty"><div class="icon">⏳</div>Loading pipelines...</div>
+        </div>
+      </div>
+
+      <!-- Deploy Section -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <span class="icon">🚀</span> Deployments
+          </div>
+          <button class="btn btn-primary" id="btn-deploy">
+            🚀 Deploy v1.0.{{ build }}
+          </button>
+        </div>
+        <div class="deploy-timeline" id="deploy-list">
+          <div class="empty"><div class="icon">⏳</div>Loading deployments...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Metrics Detail -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">📊</span> Métricas Detalhadas</div>
+        <button class="btn btn-ghost" id="btn-prom">📄 Prometheus Format</button>
+      </div>
+      <div class="metrics-grid">
+        <div class="metrics-card" id="metrics-detail">
+          <div class="metric-row"><span class="metric-key">Crystal Version</span><span class="metric-val" id="m-crystal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Uptime (seconds)</span><span class="metric-val" id="m-uptime">—</span></div>
+          <div class="metric-row"><span class="metric-key">Total Requests</span><span class="metric-val" id="m-requests">—</span></div>
+          <div class="metric-row"><span class="metric-key">Error Count</span><span class="metric-val" id="m-errors">—</span></div>
+          <div class="metric-row"><span class="metric-key">Avg Response (ms)</span><span class="metric-val" id="m-avg">—</span></div>
+          <div class="metric-row"><span class="metric-key">P99 Response (ms)</span><span class="metric-val" id="m-p99">—</span></div>
+          <div class="metric-row"><span class="metric-key">Req/Minute</span><span class="metric-val" id="m-rpm">—</span></div>
+          <div class="metric-row"><span class="metric-key">Memory (MB)</span><span class="metric-val" id="m-memory">—</span></div>
+        </div>
+
+        <div class="metrics-card">
+          <div style="margin-bottom:12px; font-size:13px; font-weight:600; color:var(--text-secondary)">
+            📋 Live API Console
+          </div>
+          <div class="terminal" id="terminal">
+            <div class="log-info">[system] Connecting to Crystal API...</div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px">
+            <button class="btn btn-ghost" onclick="testEndpoint('/health')">GET /health</button>
+            <button class="btn btn-ghost" onclick="testEndpoint('/metrics')">GET /metrics</button>
+            <button class="btn btn-ghost" onclick="testEndpoint('/')">GET /</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // ── Configuration ──────────────────────────────────────────
+  const API_BASE = 'http://localhost:3000';
+  let buildNum = Math.floor(Math.random() * 50) + 100;
+  let refreshInterval = null;
+
+  // ── Toast System ────────────────────────────────────────────
+  function toast(message, type = 'success') {
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // ── Terminal Logger ──────────────────────────────────────────
+  function log(msg, type = '') {
+    const term = document.getElementById('terminal');
+    const line = document.createElement('div');
+    line.className = `log-${type}`;
+    const time = new Date().toLocaleTimeString('pt-BR');
+    line.textContent = `[${time}] ${msg}`;
+    term.appendChild(line);
+    term.scrollTop = term.scrollHeight;
+
+    // Keep only last 50 lines
+    while (term.children.length > 50) term.removeChild(term.firstChild);
+  }
+
+  // ── Fetch Metrics ────────────────────────────────────────────
+  async function fetchMetrics() {
+    try {
+      const res = await fetch(`${API_BASE}/metrics`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Update stat cards
+      document.getElementById('stat-uptime').textContent = data.uptime_seconds + 's';
+      document.getElementById('stat-uptime-human').textContent = data.uptime_human;
+      document.getElementById('stat-requests').textContent = data.total_requests.toLocaleString();
+      document.getElementById('stat-rpm').textContent = `${data.requests_per_minute} req/min`;
+      document.getElementById('stat-avg-rt').textContent = data.avg_response_ms + 'ms';
+      document.getElementById('stat-p99').textContent = `P99: ${data.p99_response_ms}ms`;
+
+      const errRate = data.error_rate_pct;
+      const errEl = document.getElementById('stat-error-rate');
+      errEl.textContent = errRate.toFixed(1) + '%';
+      errEl.className = `stat-value ${errRate > 5 ? 'red' : errRate > 1 ? 'amber' : 'green'}`;
+
+      document.getElementById('stat-errors').textContent = `${data.error_count} errors`;
+      document.getElementById('stat-memory').textContent = data.memory_mb + 'MB';
+      document.getElementById('crystal-version').textContent = data.crystal_version || '1.14';
+
+      // Metrics detail
+      document.getElementById('m-crystal').textContent = 'Crystal ' + (data.crystal_version || '1.14');
+      document.getElementById('m-uptime').textContent = data.uptime_seconds;
+      document.getElementById('m-requests').textContent = data.total_requests.toLocaleString();
+      document.getElementById('m-errors').textContent = data.error_count;
+      document.getElementById('m-avg').textContent = data.avg_response_ms;
+      document.getElementById('m-p99').textContent = data.p99_response_ms;
+      document.getElementById('m-rpm').textContent = data.requests_per_minute;
+      document.getElementById('m-memory').textContent = data.memory_mb + ' MB';
+
+    } catch (e) {
+      log(`Metrics error: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Fetch Pipelines ───────────────────────────────────────────
+  async function fetchPipelines() {
+    try {
+      const [pRes, sRes] = await Promise.all([
+        fetch(`${API_BASE}/pipeline`),
+        fetch(`${API_BASE}/pipeline/stats/summary`)
+      ]);
+
+      const pData = await pRes.json();
+      const stats = await sRes.json();
+
+      // Update pipeline stat
+      document.getElementById('stat-pipelines').textContent = pData.total;
+      document.getElementById('stat-success-rate').textContent =
+        `${stats.success_rate}% success (${stats.grade})`;
+
+      // Running badge
+      const running = pData.runs.filter(r => r.status === 'running').length;
+      const badge = document.getElementById('running-badge');
+      if (running > 0) {
+        badge.style.display = '';
+        badge.textContent = `${running} running`;
+      } else {
+        badge.style.display = 'none';
+      }
+
+      // Render pipeline list
+      const list = document.getElementById('pipeline-list');
+      if (pData.runs.length === 0) {
+        list.innerHTML = '<div class="empty"><div class="icon">🔄</div>No pipelines yet. Click "Trigger Pipeline" to start!</div>';
+        return;
+      }
+
+      list.innerHTML = pData.runs.slice(0, 8).map(run => {
+        const stagesHtml = (run.stages || []).map(s =>
+          `<div class="stage-dot ${s.status}" title="${s.name}"></div>`
+        ).join('');
+
+        const statusBadge = `<span class="badge badge-${run.status}">${run.status}</span>`;
+        const duration = run.total_duration_ms ? `${(run.total_duration_ms/1000).toFixed(1)}s` : '…';
+
+        return `
+          <div class="pipeline-run">
+            <div class="run-status-icon">${statusIcon(run.status)}</div>
+            <div class="run-info">
+              <div class="run-id">${run.id} • ${run.commit_sha}</div>
+              <div class="run-name">${run.pipeline_name} ${statusBadge}</div>
+              <div class="run-meta">🌿 ${run.branch} • triggered by ${run.triggered_by}</div>
+            </div>
+            <div class="run-stages">${stagesHtml}</div>
+            <div class="run-duration">⏱ ${duration}</div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (e) {
+      log(`Pipeline fetch error: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Fetch Deployments ─────────────────────────────────────────
+  async function fetchDeployments() {
+    try {
+      const res = await fetch(`${API_BASE}/deploy`);
+      const data = await res.json();
+      const list = document.getElementById('deploy-list');
+
+      if (data.deployments.length === 0) {
+        list.innerHTML = '<div class="empty"><div class="icon">🚀</div>No deployments yet. Click "Deploy" to start!</div>';
+        return;
+      }
+
+      list.innerHTML = data.deployments.slice(0, 6).map(dep => {
+        const progress = (dep.health_checks_passed / dep.health_checks_total) * 100;
+        const statusColor = dep.status === 'success' ? 'var(--green)' :
+                            dep.status === 'failed'  ? 'var(--red)'   :
+                            dep.status === 'running' || dep.status === 'healthchecking' ? 'var(--amber)' : 'var(--text-muted)';
+
+        return `
+          <div class="deploy-item">
+            <div style="font-size:20px">${deployIcon(dep.status)}</div>
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:13px;font-weight:600">${dep.app_name} <code style="font-size:11px;color:var(--crystal);font-family:var(--font-mono)">${dep.version}</code></span>
+                <span class="badge badge-${dep.status === 'healthchecking' ? 'running' : dep.status}">${dep.status}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">
+                🌍 ${dep.environment} • 🔄 ${dep.strategy}
+              </div>
+              <div class="deploy-progress">
+                <div class="deploy-progress-fill" style="width:${progress}%"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                Health checks: ${dep.health_checks_passed}/${dep.health_checks_total}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (e) {
+      log(`Deploy fetch error: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Helper functions ──────────────────────────────────────────
+  function statusIcon(status) {
+    const icons = { queued: '⏳', running: '⚙️', success: '✅', failed: '❌', cancelled: '🚫' };
+    return icons[status] || '❓';
+  }
+  function deployIcon(status) {
+    const icons = { pending: '⏳', running: '🔄', healthchecking: '🩺', success: '✅', failed: '❌', rolledback: '⏮' };
+    return icons[status] || '🚀';
+  }
+
+  // ── Test Endpoint ─────────────────────────────────────────────
+  async function testEndpoint(path) {
+    log(`→ GET ${API_BASE}${path}`, 'info');
+    try {
+      const start = Date.now();
+      const res = await fetch(`${API_BASE}${path}`);
+      const elapsed = Date.now() - start;
+      const data = await res.json();
+      log(`← ${res.status} OK in ${elapsed}ms`, 'success');
+      log(JSON.stringify(data, null, 2).split('\n').slice(0,3).join(' '), 'muted');
+    } catch(e) {
+      log(`← ERROR: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Button Handlers ───────────────────────────────────────────
+  document.getElementById('btn-trigger').onclick = async () => {
+    const branches = ['main', 'develop', 'feature/new-api', 'hotfix/perf'];
+    const branch = branches[Math.floor(Math.random() * branches.length)];
+    log(`Triggering pipeline on branch: ${branch}`, 'info');
+    try {
+      const res = await fetch(`${API_BASE}/pipeline/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch, inject_failure: false })
+      });
+      const data = await res.json();
+      toast(`Pipeline triggered! ID: ${data.run_id}`, 'success');
+      log(`✅ Pipeline ${data.run_id} queued`, 'success');
+    } catch(e) {
+      toast(`Error: ${e.message}`, 'error');
+      log(`❌ ${e.message}`, 'error');
+    }
+  };
+
+  document.getElementById('btn-trigger-fail').onclick = async () => {
+    log(`Triggering pipeline with INJECTED FAILURE for demo...`, 'error');
+    try {
+      const res = await fetch(`${API_BASE}/pipeline/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch: 'buggy/feature', inject_failure: true })
+      });
+      const data = await res.json();
+      toast(`Failure pipeline triggered! Watch it fail at Unit Tests stage`, 'error');
+      log(`⚠️ Failure injection pipeline ${data.run_id} started`, 'error');
+    } catch(e) {
+      toast(`Error: ${e.message}`, 'error');
+    }
+  };
+
+  document.getElementById('btn-deploy').onclick = async () => {
+    buildNum++;
+    const version = `v1.0.${buildNum}`;
+    log(`Deploying ${version} to production with blue-green strategy...`, 'info');
+    try {
+      const res = await fetch(`${API_BASE}/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          app_name: 'crystal-devops-demo',
+          version,
+          environment: 'production',
+          strategy: 'blue-green'
+        })
+      });
+      const data = await res.json();
+      toast(`🚀 Deploying ${version}! Blue-green in progress...`, 'success');
+      log(`✅ Deployment ${data.deployment_id} started`, 'success');
+    } catch(e) {
+      toast(`Deploy error: ${e.message}`, 'error');
+      log(`❌ ${e.message}`, 'error');
+    }
+  };
+
+  document.getElementById('btn-prom').onclick = async () => {
+    log(`Fetching Prometheus metrics format...`, 'info');
+    try {
+      const res = await fetch(`${API_BASE}/metrics/prometheus`);
+      const text = await res.text();
+      log(`Prometheus metrics:\n${text.split('\n').slice(0,8).join('\n')}`, 'muted');
+      toast('Prometheus metrics fetched! Check console.', 'success');
+    } catch(e) {
+      log(`❌ ${e.message}`, 'error');
+    }
+  };
+
+  // ── Refresh Loop ──────────────────────────────────────────────
+  async function refreshAll() {
+    await Promise.all([fetchMetrics(), fetchPipelines(), fetchDeployments()]);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  (async () => {
+    log('🔮 Crystal DevOps Dashboard initializing...', 'info');
+    log(`🌐 API: ${API_BASE}`, 'muted');
+
+    await refreshAll();
+    log('✅ Connected to Crystal API!', 'success');
+
+    // Auto-refresh every 2 seconds
+    refreshInterval = setInterval(refreshAll, 2000);
+
+    // Update deploy button
+    document.getElementById('btn-deploy').innerHTML = `🚀 Deploy v1.0.${buildNum + 1}`;
+  })();
+</script>
+</body>
+</html>

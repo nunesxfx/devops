@@ -1,0 +1,26 @@
+name: crystal-devops-demo
+version: 1.0.0
+
+authors:
+  - DevOps Team <devops@example.com>
+
+description: |
+  Crystal Lang DevOps Demo — Sistema para apresentação
+  demonstrando performance, type safety e DevOps practices.
+
+targets:
+  crystal-devops-demo:
+    main: src/main.cr
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+    version: ~> 1.6.0
+
+development_dependencies:
+  webmock:
+    github: manastech/webmock.cr
+
+crystal: ">= 1.10.0"
+
+license: MIT

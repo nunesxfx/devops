@@ -1,0 +1,5 @@
+require "spec"
+require "../../src/models/deployment"
+require "../../src/models/pipeline_run"
+require "../../src/services/pipeline_service"
+require "../../src/services/metrics_service"

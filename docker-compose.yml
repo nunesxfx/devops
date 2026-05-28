@@ -1,0 +1,58 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────
+# Crystal DevOps Demo — Docker Compose
+# Services: crystal-api + nginx (serves dashboard)
+# ─────────────────────────────────────────────────────────────
+
+networks:
+  crystal-net:
+    driver: bridge
+
+volumes:
+  dashboard-static:
+
+services:
+  # ── Crystal API ────────────────────────────────────────────
+  crystal-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: crystal-devops-demo:latest
+    container_name: crystal-api
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      KEMAL_ENV: "production"
+    networks:
+      - crystal-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "app.component=api"
+      - "app.language=crystal"
+
+  # ── Dashboard (Nginx serving HTML dashboard) ──────────────
+  dashboard:
+    image: nginx:1.25-alpine
+    container_name: crystal-dashboard
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+    networks:
+      - crystal-net
+    depends_on:
+      crystal-api:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "app.component=dashboard"
